@@ -259,16 +259,15 @@ if __name__ == '__main__':
     # For simple test, try tid 97904 at school 1205
 
 
-    # schools = [971, 13744]
+    #schools = [278,298,675,1331,960,971,795,957,958,807,1325,4115,842,1223,992,1519,240,4070,413,747,389,82,252,563,883,453,1045,412,1223,907,970,6,240,847,527,4441,1053,973,228,398]
+    schools = [883]
     for school in schools:
         print("=== Processing School " + str(school) + " ===")
         rmps = RateMyProfApi(school, False)
         rmps.WriteProfessorListToCSV()
         professors = rmps.get_professor_list()
         print(len(professors))
-
-    rmps = RateMyProfApi(971, False)
-    reviewList = rmps.create_reviews_list_for_all()
-    rmps.WriteReviewsListToCSV(reviewList)
-    print(len(reviewList))
+        # reviewList = rmps.create_reviews_list_for_all()
+        # rmps.WriteReviewsListToCSV(reviewList)
+        # print(len(reviewList))
 
