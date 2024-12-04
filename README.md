@@ -49,3 +49,4 @@ The above funtion will print out and return the requested value. The result is b
 4.3
 ```
 This class can be easily edited to use in your project.
+# rate-my-professor-data-analysis

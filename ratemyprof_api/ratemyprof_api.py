@@ -4,7 +4,7 @@ import math
 import csv
 import os
 
-from .professor import Professor
+from professor import Professor
 # This code has been tested using Python 3.6 interpreter and Linux (Ubuntu).
 # It should run under Windows, if anything you may need to make some adjustments for the file paths of the CSV files.
 
@@ -36,6 +36,9 @@ class RateMyProfApi:
         # dict of Professor
         self.professors= self.scrape_professors(testing)
         self.indexnumber = False
+    
+    def get_professor_list(self):
+        return self.professors
 
     def scrape_professors(
         self,
@@ -58,14 +61,22 @@ class RateMyProfApi:
 
             for json_professor in json_response["professors"]:
                 print(json_professor)
-                professor = Professor(
+                professor = professor = Professor(
                     json_professor["tid"],
                     json_professor["tFname"],
                     json_professor["tLname"],
                     json_professor["tNumRatings"],
-                    json_professor["overall_rating"])
+                    json_professor["overall_rating"],
+                    tDept=json_professor.get("tDept"),
+                    tSid=json_professor.get("tSid"),
+                    institution_name=json_professor.get("institution_name"),
+                    tMiddlename=json_professor.get("tMiddlename"),
+                    rating_class=json_professor.get("rating_class"),
+                    contentType=json_professor.get("contentType"),
+                    categoryType=json_professor.get("categoryType")
+                )
 
-                professors[professor.ratemyprof_id] = professor
+                professors[professor.tid] = professor
 
             # for test cases, limit to 2 iterations
             if testing and (i > 1): break
@@ -85,10 +96,10 @@ class RateMyProfApi:
         )  # get the number of professors at William Paterson University
         return num_of_prof
 
-    def search_professor(self, ProfessorName):
-        self.indexnumber = self.get_professor_index(ProfessorName)
-        self.print_professor_info()
-        return self.indexnumber
+    # def search_professor(self, ProfessorName):
+    #     self.indexnumber = self.get_professor_index(ProfessorName)
+    #     self.print_professor_info()
+    #     return self.indexnumber
 
 
 
@@ -108,9 +119,6 @@ class RateMyProfApi:
         raise ProfessorNotFound(last_name, "Last Name")
 
 
-
-
-
     def WriteProfessorListToCSV(self):
         csv_columns = [
             "tDept",
@@ -124,16 +132,24 @@ class RateMyProfApi:
             "rating_class",
             "contentType",
             "categoryType",
-            "overall_rating",
+            "overall_rating"
         ]
+
         csv_file = "SchoolID_" + str(self.UniversityId) + ".csv"
         with open(csv_file, "w") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()
-            for data in self.professorlist:
-                writer.writerow(data)
+            print('*'*30)
+            print(self.professors)
+            print('*'*30)
+            for professor_id, professor in self.professors.items():
+                writer.writerow(professor.to_dict())
 
     def create_reviews_list(self, tid):
+
+        def add_tid_to_dicts(dict_list, tid_value):
+            return [{**d, "tid": tid_value} for d in dict_list]
+        
         tempreviewslist = []
         num_of_reviews = self.get_num_of_reviews(tid)
         # RMP only loads 20 reviews per page,
@@ -151,7 +167,18 @@ class RateMyProfApi:
             temp_list = temp_jsonpage["ratings"]
             tempreviewslist.extend(temp_list)
             i += 1
+        
+        tempreviewslist = add_tid_to_dicts(tempreviewslist, tid)
+
         return tempreviewslist
+    
+    def create_reviews_list_for_all(self):
+        all_reviews_for_all_profs = []
+        for professor_id, professor in self.professors.items():
+            all_reviews_for_all_profs.extend(self.create_reviews_list(professor_id))
+        
+        return all_reviews_for_all_profs
+
 
     def get_num_of_reviews(self, id):
         page = requests.get(
@@ -159,12 +186,18 @@ class RateMyProfApi:
             + str(id)
             + "&filter=&courseCode=&page=1"
         )
-        temp_jsonpage = json.loads(page.content)
-        num_of_reviews = temp_jsonpage["remaining"] + 20
+        num_of_reviews=0
+        if page.content:
+            temp_jsonpage = json.loads(page.content)
+            num_of_reviews = temp_jsonpage["remaining"] + 20
+        else:
+            print("Empty response received for: "+id)
+        
         return num_of_reviews
 
-    def WriteReviewsListToCSV(self, rlist, tid):
+    def WriteReviewsListToCSV(self, rlist):
         csv_columns = [
+            "tid",
             "attendance",
             "clarityColor",
             "easyColor",
@@ -198,7 +231,7 @@ class RateMyProfApi:
             "usefulGrouping",
         ]
         csv_file = (
-            "./SchoolID_" + str(self.UniversityId) + "/TeacherID_" + str(tid) + ".csv"
+            "./SchoolID_" + str(self.UniversityId) + "_reviews.csv"
         )
         with open(csv_file, "w") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
@@ -211,27 +244,31 @@ class RateMyProfApi:
 if __name__ == '__main__':
 
     # Getting general professor info!
-    uci = RateMyProfApi(1074)
+    # uci = RateMyProfApi(1074)
 
 
     # uci.search_professor("Pattis")
     # uci.print_professor_detail("overall_rating")
-    '''
-    MassInstTech = RateMyProfApi(580)
-    MassInstTech.search_professor("Robert Berwick")
-    MassInstTech.print_professor_detail("overall_rating")
+    
+    # MassInstTech = RateMyProfApi(580)
+    # MassInstTech.search_professor("Robert Berwick")
+    # MassInstTech.print_professor_detail("overall_rating")
 
     # Let's try the above class out to get data from a number of schools!
     # William Patterson, Case Western, University of Chicago, CMU, Princeton, Yale, MIT, UTexas at Austin, Duke, Stanford, Rice, Tufts
     # For simple test, try tid 97904 at school 1205
-    schools = [1205, 186, 1085, 181, 780, 1222, 580, 1255, 1350, 953, 799, 1040]
+
+
+    # schools = [971, 13744]
     for school in schools:
         print("=== Processing School " + str(school) + " ===")
-        rmps = RateMyProfApi(school)
+        rmps = RateMyProfApi(school, False)
         rmps.WriteProfessorListToCSV()
         professors = rmps.get_professor_list()
-        for professor in professors:
-            reviewslist = rmps.create_reviews_list(professor.get("tid"))
-            rmps.WriteReviewsListToCSV(reviewslist, professor.get("tid"))
+        print(len(professors))
 
-    '''
+    rmps = RateMyProfApi(971, False)
+    reviewList = rmps.create_reviews_list_for_all()
+    rmps.WriteReviewsListToCSV(reviewList)
+    print(len(reviewList))
+
